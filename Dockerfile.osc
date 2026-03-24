@@ -1,0 +1,23 @@
+# Langfuse OSC deployment: combined web + worker in a single container
+# Uses official prebuilt images to avoid long build times
+
+FROM langfuse/langfuse-worker:3 AS worker-src
+FROM langfuse/langfuse:3
+
+USER root
+
+# Install bash (required for osc-entrypoint.sh) and process tools
+RUN apk add --no-cache bash
+
+# Copy the worker application to a separate directory to preserve its node_modules
+COPY --from=worker-src /app /opt/langfuse-worker
+
+COPY --chmod=755 osc-entrypoint.sh /usr/local/bin/osc-entrypoint.sh
+
+USER nextjs
+WORKDIR /app
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/osc-entrypoint.sh"]
+CMD ["node", "./web/server.js", "--keepAliveTimeout", "110000"]
